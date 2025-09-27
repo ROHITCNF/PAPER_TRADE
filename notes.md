@@ -8,7 +8,7 @@ You can place trades with dummy money, test strategies on historical data, and g
 ## 🏗️ Step-by-Step Roadmap
 
 ### Phase 1: Core Setup
-- [] **Repo Setup**
+- [✅] **Repo Setup**
   - Initialize Node.js project (`npm init`, TypeScript optional).
   - Add `.env` for Fyers credentials + AI API key.
   - Set up basic Express/Next.js backend with a health route.
