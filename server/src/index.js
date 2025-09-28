@@ -14,8 +14,7 @@ fyers.setRedirectUrl("https://projects.wojtekmaj.pl/react-lifecycle-methods-diag
 
 
 
-generateAuthCodeUrl(fyers);
-generateAccessToken(fyers);
+generateAuthCodeUrl(fyers); // initiate auth
 
 app.listen(5000, () => {
   console.log("Server is running on port 5000");

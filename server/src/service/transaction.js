@@ -1,18 +1,27 @@
-async function getOrders(fyers){
-    const response = await fyers.get_orders();
-    console.log("ORDERS RESPONSE ",response);
-    getPositions(fyers);
+const { MOCK_PROFILE, ORDERBOOK, POSITIONS, TRADEBOOK } = require("../util/constant");
+
+async function getOrders(fyers) {    
+    if (MOCK_PROFILE) {
+        return ORDERBOOK;
+    }
+    return await fyers.get_orders();
+
 }
 
-async function getPositions(fyers){
-    const response = await fyers.get_positions();
-    console.log("POSITIONS RESPONSE ",response);
-    getTradeBook(fyers);
+async function getPositions(fyers) {
+    if (MOCK_PROFILE) {
+        return POSITIONS;
+    }
+    return await fyers.get_positions();
+
 }
 
-async function getTradeBook(fyers){
-    const response = await fyers.get_tradebook();
-    console.log("TRADE BOOK RESPONSE ",response);
+async function getTradeBook(fyers) {
+    if (MOCK_PROFILE) {
+        return Promise.resolve(TRADEBOOK);
+    }
+    return await fyers.get_tradebook();
+
 }
 
-module.exports = { getOrders , getPositions , getTradeBook };
+module.exports = { getOrders, getPositions, getTradeBook };
