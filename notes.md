@@ -14,7 +14,7 @@ You can place trades with dummy money, test strategies on historical data, and g
   - Set up basic Express/Next.js backend with a health route.
   - (Optional) GitHub workflows for lint/test CI.
 
-- [ ] **Fyers SDK Integration**
+- [✅] **Fyers SDK Integration**
   - Write a simple service to connect to Fyers SDK.
   - Fetch account profile + one stock’s live price (`console.log` output).
   - Add service to fetch historical OHLC for a symbol.
