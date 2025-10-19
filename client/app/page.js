@@ -9,7 +9,7 @@ export default function HomePage() {
  
   return (
     <div>
-      <Header title="Develop. Preview. Ship." />
+      <Header title="Paper Trading Platform  and Backtest AI Assistant" />
       <ul>
         {names.map((name) => (
           <li key={name}>{name}</li>
