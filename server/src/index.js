@@ -7,14 +7,20 @@ require("dotenv").config();
 const { connectToDb } = require("./service/lib/mongodb");
 const port = process.env.PORT || 5000;
 
-const corsOptions = {
-  origin: "https://paper-trade-rho.vercel.app/",
-  credentials: true,
+// const corsOptions = {
+//   origin: "https://paper-trade-rho.vercel.app/",
+//   credentials: true,
+// };
+const corsOptions_v2 = {
+  origin: "https://paper-trade-rho.vercel.app", // your frontend
+  methods: "*",        // allow all HTTP methods: GET, POST, PUT, DELETE, PATCH, OPTIONS
+  allowedHeaders: "*", // allow all headers (Content-Type, Authorization, etc.)
+  credentials: true    // allow cookies/auth if needed
 };
 //middileWare for express json
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors(corsOptions));
+app.use(cors(corsOptions_v2));
 
 global.fyers = new FyersAPI();
 
