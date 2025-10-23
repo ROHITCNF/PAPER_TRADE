@@ -5,6 +5,7 @@ const cookieParser = require("cookie-parser");
 const FyersAPI = require("fyers-api-v3").fyersModel;
 require("dotenv").config();
 const { connectToDb } = require("./service/lib/mongodb");
+const port = process.env.PORT || 5000;
 
 const corsOptions = {
   origin: "https://paper-trade-rho.vercel.app/",
@@ -31,7 +32,7 @@ connectToDb().then(() => {
 });
 
 function startServer(){
-  app.listen(5000, () => {
+  app.listen(port, () => {
     console.log("Server is running on port 5000");
   });
 }
