@@ -1,21 +1,5 @@
-import LikeButton from './like-button';
- 
-function Header({ title }) {
-  return <h1>{title ? title : 'Default title'}</h1>;
-}
- 
+import { redirect } from 'next/navigation';
+
 export default function HomePage() {
-  const names = ['Ada Lovelace', 'Grace Hopper', 'Margaret Hamilton'];
- 
-  return (
-    <div>
-      <Header title="Paper Trading Platform  and Backtest AI Assistant" />
-      <ul>
-        {names.map((name) => (
-          <li key={name}>{name}</li>
-        ))}
-      </ul>
-      <LikeButton />
-    </div>
-  );
+  redirect('/home');
 }

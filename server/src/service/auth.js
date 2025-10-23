@@ -9,9 +9,13 @@ const { connectToGenAi } = require("./lib/genAi");
 const { testStrategies } = require("./strategyTester");
 
 function generateAuthCodeUrl() {
-    const generateAuthCodeUrl = global.fyers.generateAuthCode();
-   // console.log(generateAuthCodeUrl);
-    generateAccessToken();
+  try {
+      const generateAuthCodeUrl = global.fyers.generateAuthCode();
+       console.log(generateAuthCodeUrl);
+     // generateAccessToken();
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 async function generateAccessToken() {
