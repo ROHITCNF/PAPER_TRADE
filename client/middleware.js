@@ -24,7 +24,7 @@ export function middleware(request) {
 
   // If already fully logged in, avoid login/signup
   if (!missingLogin && !missingAuthCode && !missingAccessToken && publicRoutes.includes(pathname)) {
-    return NextResponse.redirect(new URL('/profile', request.url));
+    return NextResponse.redirect(new URL('/home', request.url));
   }
 
   return NextResponse.next();

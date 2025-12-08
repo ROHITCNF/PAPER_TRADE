@@ -1,5 +1,5 @@
 let MOCK_PROFILE = true;
-let redirectUrl = "https://paper-trade-rho.vercel.app/login";
+let redirectUrl = "http://10.80.23.223:3000/login";
 let FUNDS_DATA = [
     {
         title: 'Current Balance',
@@ -23,4 +23,4 @@ let POSITIONS = {
     }
 };
 
-module.exports = { MOCK_PROFILE, FUNDS_DATA , ORDERBOOK , TRADEBOOK , POSITIONS , redirectUrl };
+module.exports = { MOCK_PROFILE, FUNDS_DATA, ORDERBOOK, TRADEBOOK, POSITIONS, redirectUrl };

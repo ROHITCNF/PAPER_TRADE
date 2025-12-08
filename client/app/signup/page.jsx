@@ -25,22 +25,23 @@ export default function SignupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
+        credentials: "include",
       });
 
       const data = await res.json();
-      if(data.code === 200){
+      if (data.code === 200) {
         console.log("Signup successful");
         setTimeout(() => {
           redirect("/login");
         }, 3000);
       }
-      else if(data.code === 401){
+      else if (data.code === 401) {
         console.log("User already exists");
         setTimeout(() => {
           redirect("/login");
         }, 3000);
       }
-      else{
+      else {
         console.log("Signup failed");
         setTimeout(() => {
           redirect("/signup");
@@ -57,7 +58,7 @@ export default function SignupPage() {
     <div style={styles.container}>
       <h2 style={styles.title}>Create Your Account</h2>
       <form onSubmit={handleSubmit} style={styles.form}>
-        
+
         <input
           style={styles.input}
           type="email"
@@ -97,7 +98,7 @@ export default function SignupPage() {
           onChange={handleChange}
           required
         />
-         <p>Already have an account ? <a style={{cursor: "pointer"}} href="/login">Login</a></p>
+        <p>Already have an account ? <a style={{ cursor: "pointer" }} href="/login">Login</a></p>
 
         <button style={styles.button} disabled={loading} type="submit">
           {loading ? "Creating account..." : "Sign Up"}

@@ -1,7 +1,7 @@
 const { MOCK_PROFILE, FUNDS_DATA } = require("../util/constant");
 const { getOrders, getPositions, getTradeBook } = require("./transaction");
 async function getProfile(fyers) {
-    const response = await fyers.get_profile();
+    const response = await global.fyers.get_profile();
     return response;
 
 }
