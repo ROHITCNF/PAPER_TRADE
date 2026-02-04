@@ -5,13 +5,11 @@ import { useState, useEffect } from "react";
 import { redirect } from "next/navigation";
 export default function LoginPage() {
   const [isAuthCodeGenerated, setIsAuthCodeGenerated] = useState("");
-  const [emailId, setEmailId] = useState("");
-  const [password, setPassword] = useState("");
+  const [emailId, setEmailId] = useState("rohitcnfsecond@gmail.com");
+  const [password, setPassword] = useState("Rohit@12345");
 
   async function handleSubmit(e) {
     e.preventDefault();
-    console.log("Email ID:", emailId);
-    console.log("Password:", password);
     // TODO: Call your backend to start FYERS login flow
     const response = await fetch(`${baseUrl}/generate_auth_code_url`, {
       method: "POST",
@@ -68,7 +66,13 @@ export default function LoginPage() {
   const generateAccessToken = async () => {
     const response = await fetch(`${baseUrl}/generate_access_token`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json", Authorization: JSON.stringify({
+          web_token: getCookie("web_token"),
+          auth_code: getCookie("auth_code"),
+          access_token: getCookie("access_token"),
+        }),
+      },
       body: JSON.stringify({ authCode: isAuthCodeGenerated }),
       credentials: "include",
     });

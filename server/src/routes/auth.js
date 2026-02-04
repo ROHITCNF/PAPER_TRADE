@@ -4,6 +4,7 @@ const { redirectUrl } = require("../util/constant");
 const User = require("../service/models/user");
 const jwt = require("jsonwebtoken");
 const SECRET_KEY = process.env.JWT_SECRET || "rohit@cnf12345";
+const FyersAPI = require("fyers-api-v3").fyersModel;
 
 const verifyUser = async (token) => {
 
@@ -29,12 +30,10 @@ authRouter.get("/verify_token", async (req, res) => {
         // user is verified now we have to set accesstoken in fyersobject 
         const authCode = JSON.parse(req.headers.authorization).auth_code;
         const accessToken = JSON.parse(req.headers.authorization).access_token;
-
-        process.env.FYERS_APP_ID = user?.fyersAppId;
-        process.env.FYERS_SECRET_KEY = user?.fyersSecretKey;
-        global.fyers.setAppId(process.env.FYERS_APP_ID);
-        global.fyers.setRedirectUrl(redirectUrl);
-        global.fyers.setAccessToken(accessToken);
+        const fyers = new FyersAPI();
+        fyers.setAppId(user?.fyersAppId);
+        fyers.setRedirectUrl(redirectUrl);
+        fyers.setAccessToken(accessToken);
 
         res.status(200).json({ code: 200, message: "User authenticated successfully" });
     } catch (error) {
@@ -54,11 +53,10 @@ authRouter.post("/generate_auth_code_url", async (req, res) => {
             return res.status(401).json({ message: "Invalid password" });
         }
 
-        process.env.FYERS_APP_ID = user?.fyersAppId;
-        process.env.FYERS_SECRET_KEY = user?.fyersSecretKey;
-        global.fyers.setAppId(process.env.FYERS_APP_ID);
-        global.fyers.setRedirectUrl(redirectUrl);
-        const generateAuthCodeUrl = global.fyers.generateAuthCode();
+        const fyers = new FyersAPI();
+        fyers.setAppId(user?.fyersAppId);
+        fyers.setRedirectUrl(redirectUrl);
+        const generateAuthCodeUrl = fyers.generateAuthCode();
         const token = await user.getJWT();
         res.status(200).json({ code: 200, message: "Auth code generated successfully", url: generateAuthCodeUrl, web_token: token });
     } catch (error) {
@@ -70,10 +68,21 @@ authRouter.post("/generate_auth_code_url", async (req, res) => {
 authRouter.post("/generate_access_token", async (req, res) => {
     try {
         const { authCode } = req.body;
-        const response = await global.fyers.generate_access_token({ "client_id": process.env.FYERS_APP_ID, "secret_key": process.env.FYERS_SECRET_KEY, "auth_code": authCode });
-        global.fyers.setAccessToken(response?.access_token);
-        console.log(response);
-        res.status(200).json({ message: "Access token generated successfully", accessToken: response.access_token });
+        const webToken = JSON.parse(req.headers.authorization)?.web_token;
+        const user = await verifyUser(webToken);
+        if (!user) {
+            return res.status(401).json({ code: 401, message: "User not authenticated Please login" });
+        }
+        const fyers = new FyersAPI();
+        fyers.setAppId(user?.fyersAppId);
+        fyers.setRedirectUrl(redirectUrl);
+        const response = await fyers.generate_access_token({ "client_id": user?.fyersAppId, "secret_key": user?.fyersSecretKey, "auth_code": authCode });
+        if (response?.code === 200) {
+            res.status(200).json({ message: "Access token generated successfully", accessToken: response.access_token });
+        }
+        else {
+            res.status(401).json({ code: 401, message: "Something went wrong , Retry again" });
+        }
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "Error generating access token", error: error.message });

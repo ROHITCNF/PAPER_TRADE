@@ -12,15 +12,13 @@ profileRouter.get('/profile', async (req, res) => {
             return res.status(401).json({ code: 401, message: "User not authenticated Please login" });
         }
         const fyers = new FyersAPI();
-        fyers.setAppId('VI5GXIR8UI-100');
+        fyers.setAppId(user?.fyersAppId);
         fyers.setAccessToken(JSON.parse(req.headers.authorization)?.access_token);
         fyers.get_profile().then((response) => {
-            console.log(response)
+            return res.status(200).json({ code: 200, message: "Profile data fetched successfully", data: response });
         }).catch((error) => {
-            console.log(error)
+            return res.status(400).json({ code: 400, message: "Error getting the profile data", error: error });
         })
-        //const profileData = await getProfile(global.fyers);
-        return res.status(200).json({ code: 200, message: "Profile data fetched successfully", data: {} });
     } catch (error) {
         console.log(error);
         return res.status(400).json({ code: 400, message: "Error getting the profile data", error: error });
