@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 function createRiskEngine({ adrMultiplier = 0.3, exitTime = "14:30" }) {
     const positions = {}; // symbol -> position state
 
@@ -42,7 +45,36 @@ function createRiskEngine({ adrMultiplier = 0.3, exitTime = "14:30" }) {
                     symbol,
                     reason: "SL" // or "TRAIL" or "TIME"
                 });
+                const date = new Date();
+                const time = date.getTime();
+                console.log(JSON.stringify({
+                    time,
+                    ltp: ltp,
+                    symbol: symbol,
+                    type: 'SELL'
+                }));
 
+                try {
+
+                    const dateStr = date.toISOString().split('T')[0];
+                    const fileName = `${dateStr}-orders.log`;
+
+                    const filePath = path.join(__dirname, '../../../', fileName);
+
+                    const logContent = JSON.stringify({
+                        time,
+                        ltp: ltp,
+                        symbol: symbol,
+                        type: 'SELL'
+                    }) + '\n';
+
+                    fs.appendFile(filePath, logContent, err => {
+                        if (err) console.error("Failed to write to order log:", err);
+                    });
+
+                } catch (err) {
+                    console.error("Failed to write to order log:", err);
+                }
                 delete positions[symbol];
 
             }

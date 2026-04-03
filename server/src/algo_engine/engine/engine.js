@@ -5,6 +5,11 @@ function wireEngine(eventBus, state, indicators, strategy, riskEngine) {
         state.ltp = t.price;
         state.volume = t.qty;
         state.time = t.time;
+        state.dayVolume = t.volume;
+        // 🔹 update daily structure
+        if (t.dayStats) {
+            state.dayStats = t.dayStats;
+        }
 
         state.vwap = indicators.vwap.updateFromTick(
             t.price,

@@ -13,7 +13,7 @@ const { equityStocks, access_token } = require("../src/algo_engine/utils/constan
 const isFullStack = false;
 
 const corsOptions = {
-  origin: "http://192.168.1.27:3000",
+  origin: "http://192.168.1.31:3000",
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,

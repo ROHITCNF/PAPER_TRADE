@@ -9,13 +9,12 @@ const { wireEngine } = require("./engine/engine");
 const { normalizeDepth } = require("./utils/helper");
 const { auth_token, access_token } = require('./utils/constant');
 const { preloadAllSymbols } = require("./preload/historicalPreload");
+const { createRiskEngine } = require("./risk/riskEngine");
+
 const FyersSocket = require("fyers-api-v3").fyersDataSocket;
-// const FyersTbTSocket = require("fyers-api-v3").fyersTbtSocket;
 
 async function startAlgo(symbols = []) {
     try {
-        // symbols = ["NSE:RELIANCE-EQ"];
-        // console.log(symbols);
         const historicalContext = await preloadAllSymbols(symbols);
         console.log('Historical Data is Preloaded ✅');
 
@@ -23,16 +22,17 @@ async function startAlgo(symbols = []) {
 
         symbols.forEach(symbol => {
             const eventBus = createEventBus();
-            const state = createMarketState(symbol);
-
+            const state = createMarketState(symbol, historicalContext[symbol]);
             const vwap = createVWAP();
             const obi = createOBI();
             const vacuum = createLiquidityVacuum();
 
             const broker = createPaperBroker();
-            const strategy = createOpeningMomentum(broker);
+            const strategy = createOpeningMomentum(broker, eventBus);
+            const riskEngine = createRiskEngine({});
 
-            wireEngine(eventBus, state, { vwap, obi, vacuum }, strategy);
+            wireEngine(eventBus, state, { vwap, obi, vacuum }, strategy, riskEngine);
+
             engines[symbol] = eventBus;
         });
 
@@ -55,11 +55,22 @@ async function startAlgo(symbols = []) {
             if (!engine) return;
 
             if (data.type === "sf") {
+                // console.log(data);
+
                 engine.emit("tick", {
                     price: data.ltp,
                     qty: data.last_traded_qty || 0,
                     time: data.last_traded_time || Date.now(),
-                    volume: data.vol_traded_today
+                    volume: data.vol_traded_today,
+                    dayStats: {
+                        open: data.open_price,
+                        high: data.high_price,
+                        low: data.low_price,
+                        prevClose: data.prev_close_price,
+                        chp: data.chp,
+                        upperCkt: data.upper_ckt,
+                        lowerCkt: data.lower_ckt
+                    }
                 });
             }
 

@@ -1,5 +1,5 @@
 let MOCK_PROFILE = true;
-let redirectUrl = "http://192.168.1.27:3000/login";
+let redirectUrl = "http://192.168.1.31:3000/login";
 let FUNDS_DATA = [
     {
         title: 'Current Balance',
