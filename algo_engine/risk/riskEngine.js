@@ -83,9 +83,10 @@ function createRiskEngine({ adrMultiplier = 0.3, exitTime = '14:30' } = {}) {
             time: Date.now(),
             symbol: pos.symbol,
             strategyId: pos.strategyId,
+            side: pos.side,
             ltp,
             reason,
-            type: 'SELL'
+            type: pos.side === 'SHORT' ? 'COVER' : 'SELL'
         });
         console.log(logEntry);
         _writeOrderLog(logEntry);
