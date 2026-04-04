@@ -1,0 +1,17 @@
+{
+  "name": "algo_engine",
+  "version": "1.0.0",
+  "description": "Standalone algo trading engine powered by Fyers",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "fyers-api-v3": "^1.4.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
