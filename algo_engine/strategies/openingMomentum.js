@@ -7,41 +7,88 @@ const TICK_VOL_WINDOW    = 20;   // rolling window size for avg tick volume
 const VOLUME_SPIKE_MULT  = 1.5;  // entry tick must be ≥ 1.5× the rolling avg
 
 // Opening Momentum Strategy
-// LONG : breakout above prev-day high — price strong, bid pressure, volume spike
-// SHORT: breakdown below prev-day low  — price weak,  ask pressure, volume spike
+// Phase 1 (09:15–09:30): capture opening range high/low
+// Phase 2 (09:30–14:30): trade only if price breaks above/below that range
+//
+// LONG : ltp > opening range high + breakout above prev-day high
+// SHORT: ltp < opening range low  + breakdown below prev-day low
 function createOpeningMomentum(broker, eventBus) {
     const id = 'openingMomentum';
 
-    // Breakout confirmation counters (reset to 0 the moment price pulls back)
+    // ── Opening range state (resets each day) ────────────────────────────────
+    let openingRangeHigh = null;
+    let openingRangeLow  = null;
+
+    // ── Per-day trackers (reset each day) ────────────────────────────────────
     let ticksAbovePrevHigh = 0;
     let ticksBelowPrevLow  = 0;
+    let tickVols           = [];
+    let prevLtp            = null; // previous tick price — enforces momentum direction
+    let lastDate           = null;
 
-    // Rolling tick-volume window
-    const tickVols = [];
+    function _resetDailyState() {
+        openingRangeHigh   = null;
+        openingRangeLow    = null;
+        ticksAbovePrevHigh = 0;
+        ticksBelowPrevLow  = 0;
+        tickVols           = [];
+        prevLtp            = null;
+    }
+
+    function _getTimeInfo(epochSeconds) {
+        const d       = new Date(epochSeconds * 1000);
+        const minutes = d.getHours() * 60 + d.getMinutes();
+        const dateStr = d.toISOString().split('T')[0];
+        return { minutes, dateStr };
+    }
 
     function onTick(state, signals) {
-        // 1. Time gate: 09:30 – 14:30
-        if (!_isWithinEntryTime(state.time)) return;
+        const { minutes, dateStr } = _getTimeInfo(state.time);
 
-        // 2. No existing position for this strategy
+        // ── Reset all daily state on new trading day ─────────────────────────
+        if (dateStr !== lastDate) {
+            _resetDailyState();
+            lastDate = dateStr;
+        }
+
+        // ── Phase 1: 09:15–09:30 — build opening range, no entries ──────────
+        // In backtest: state.candle has full OHLCV → use candle.high/low for accurate range
+        // In live:     state.candle is null → use ltp (real tick price)
+        if (minutes >= (9 * 60 + 15) && minutes < (9 * 60 + 30)) {
+            const rangeHigh = state.candle ? state.candle.high : state.ltp;
+            const rangeLow  = state.candle ? state.candle.low  : state.ltp;
+            openingRangeHigh = openingRangeHigh !== null ? Math.max(openingRangeHigh, rangeHigh) : rangeHigh;
+            openingRangeLow  = openingRangeLow  !== null ? Math.min(openingRangeLow,  rangeLow)  : rangeLow;
+            return; // no trading during this window
+        }
+
+        // ── Phase 2: 09:30–14:30 — entry logic ──────────────────────────────
+
+        // 1. Time gate
+        if (minutes < (9 * 60 + 30) || minutes > (14 * 60 + 30)) return;
+
+        // 2. Opening range must be captured
+        if (openingRangeHigh === null || openingRangeLow === null) return;
+
+        // 3. No existing position for this strategy
         if (state.positions[id]) return;
 
-        // 3. Context must be loaded
+        // 4. Context must be loaded
         if (!state.context) return;
 
-        // 4. Skip entry during liquidity vacuum (thin book = bad fills)
+        // 5. Skip entry during liquidity vacuum (thin book = bad fills)
         if (signals.liquidityVacuum) return;
 
-        // 5. Gap filter: skip if stock already gapped > 1.2× its ADR
+        // 6. Gap filter: skip if stock already gapped > 1.2× its ADR
         if (!_isGapAcceptable(state)) return;
 
-        // 6. Range filter: skip if > 80% of normal daily range already consumed
+        // 7. Range filter: skip if > 80% of normal daily range already consumed
         if (!_isRangeAvailable(state)) return;
 
-        // 7. ADR filter: skip low-volatility/illiquid stocks (< 1.2% ADR)
+        // 8. ADR filter: skip low-volatility/illiquid stocks (< 1.2% ADR)
         if (!_isTradable(state.context)) return;
 
-        // 8. RVOL filter: after 12 PM, require at least 60% of avg daily volume
+        // 9. RVOL filter: after 12 PM, require at least 60% of avg daily volume
         if (!_hasSufficientVolume(state)) return;
 
         // Update per-tick trackers after common gates
@@ -49,32 +96,43 @@ function createOpeningMomentum(broker, eventBus) {
         _updateTickVolume(state.volume);
 
         const hasVolumeSpike = _hasVolumeSpike(state.volume);
-        const { open } = state.dayStats;
+        const tickingUp   = prevLtp !== null && state.ltp > prevLtp;
+        const tickingDown = prevLtp !== null && state.ltp < prevLtp;
 
-        // ── LONG: breakout above prev-day high ───────────────────────────────
+        // Track prevLtp AFTER computing direction but BEFORE returning
+        const currentLtp = state.ltp;
+
+        // ── LONG: price above opening range high + prev-day high breakout ────
         if (
-            _isNearPrevDayHigh(state)          &&   // 9. near key level
-            ticksAbovePrevHigh >= BREAKOUT_TICKS &&  // 1. held above for N ticks
-            hasVolumeSpike                       &&  // 2. volume surge on this tick
-            state.ltp   > open                   &&  // 10. above today's open
-            state.ltp   > signals.vwap           &&  //     above VWAP
-            signals.obi > OBI_THRESHOLD              // 3. strong bid pressure
+            tickingUp                                            &&   // current price > last price
+            state.ltp > openingRangeHigh                         &&   // above 09:15–09:30 high
+            _isNearPrevDayHigh(state)                            &&   // near key level
+            ticksAbovePrevHigh >= BREAKOUT_TICKS                 &&   // held above for N ticks
+            hasVolumeSpike                                       &&   // volume surge on this tick
+            state.ltp   > signals.vwap                           &&   // above VWAP
+            (signals.obi === null || signals.obi > OBI_THRESHOLD)     // bid pressure (null = backtest, skip)
         ) {
+            prevLtp = currentLtp;
             _enterTrade(state, signals, 'LONG');
             return;
         }
 
-        // ── SHORT: breakdown below prev-day low ──────────────────────────────
+        // ── SHORT: price below opening range low + prev-day low breakdown ────
         if (
-            _isNearPrevDayLow(state)            &&   // 9. near key level
-            ticksBelowPrevLow >= BREAKOUT_TICKS  &&  // 1. held below for N ticks
-            hasVolumeSpike                       &&  // 2. volume surge on this tick
-            state.ltp    < open                  &&  // 10. below today's open
-            state.ltp    < signals.vwap          &&  //     below VWAP
-            signals.obi  < -OBI_THRESHOLD            // 3. strong ask pressure
+            tickingDown                                           &&   // current price < last price
+            state.ltp < openingRangeLow                           &&   // below 09:15–09:30 low
+            _isNearPrevDayLow(state)                              &&   // near key level
+            ticksBelowPrevLow >= BREAKOUT_TICKS                   &&   // held below for N ticks
+            hasVolumeSpike                                        &&   // volume surge on this tick
+            state.ltp    < signals.vwap                           &&   // below VWAP
+            (signals.obi === null || signals.obi < -OBI_THRESHOLD)     // ask pressure (null = backtest, skip)
         ) {
+            prevLtp = currentLtp;
             _enterTrade(state, signals, 'SHORT');
+            return;
         }
+
+        prevLtp = currentLtp;
     }
 
     // ── Per-tick trackers ────────────────────────────────────────────────────
@@ -99,12 +157,6 @@ function createOpeningMomentum(broker, eventBus) {
     }
 
     // ── Filters ──────────────────────────────────────────────────────────────
-
-    function _isWithinEntryTime(epochSeconds) {
-        const d = new Date(epochSeconds * 1000);
-        const minutes = d.getHours() * 60 + d.getMinutes();
-        return minutes >= (9 * 60 + 30) && minutes <= (14 * 60 + 30);
-    }
 
     function _isTradable({ adrPercent }) {
         return adrPercent >= 0.012;
@@ -160,14 +212,16 @@ function createOpeningMomentum(broker, eventBus) {
         }
 
         const logEntry = JSON.stringify({
-            time:       Date.now(),
-            symbol:     state.symbol,
-            strategyId: id,
+            time:              Date.now(),
+            symbol:            state.symbol,
+            strategyId:        id,
             side,
-            ltp:        state.ltp,
-            vwap:       signals.vwap,
-            obi:        signals.obi,
-            type:       'BUY'
+            ltp:               state.ltp,
+            vwap:              signals.vwap,
+            obi:               signals.obi,
+            openingRangeHigh,
+            openingRangeLow,
+            type:              side === 'LONG' ? 'BUY' : 'SHORT'
         });
         console.log(logEntry);
         _writeOrderLog(logEntry);

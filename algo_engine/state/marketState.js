@@ -8,6 +8,7 @@ function createMarketState(symbol, context) {
         spread: null,
         vwap: null,
         obi: null,
+        candle: null,  // set by wireEngine in backtest (full candle OHLCV); null in live
         time: null,
         dayVolume: 0,
         dayStats: {

@@ -33,20 +33,27 @@ function createRiskEngine({ adrMultiplier = 0.3, exitTime = '14:30' } = {}) {
         };
     }
 
-    function onTick({ symbol, ltp, time, broker, eventBus }) {
+    // candleHigh / candleLow are optional — passed in backtest from candle OHLC.
+    // In live trading they are undefined and the check falls back to ltp only.
+    function onTick({ symbol, ltp, time, broker, eventBus, candleHigh, candleLow }) {
         for (const key of Object.keys(positions)) {
             const pos = positions[key];
             if (pos.symbol !== symbol) continue;
 
             // --- Trailing stop ---
             if (pos.side === 'LONG') {
+                // Update highest from ltp (open price) — conservative, doesn't use candle high
+                // so the trail doesn't ratchet up from a spike we can't actually capture
                 pos.highest = Math.max(pos.highest, ltp);
                 const slPercent = 1 - (pos.stopLoss / pos.entryPrice);
                 const trail = pos.highest * (1 - slPercent);
                 pos.trailingStop = Math.max(pos.trailingStop, trail);
 
-                if (ltp <= pos.trailingStop) {
-                    _exit(pos, ltp, 'TRAIL_SL', broker, eventBus);
+                // Check SL against candle low (worst intracandle price for LONG)
+                // In live: candleLow is undefined → falls back to ltp
+                const worstPrice = candleLow != null ? candleLow : ltp;
+                if (worstPrice <= pos.trailingStop) {
+                    _exit(pos, pos.trailingStop, 'TRAIL_SL', broker, eventBus);
                     continue;
                 }
             }
@@ -57,8 +64,10 @@ function createRiskEngine({ adrMultiplier = 0.3, exitTime = '14:30' } = {}) {
                 const trail = pos.lowest * (1 + slPercent);
                 pos.trailingStop = Math.min(pos.trailingStop, trail);
 
-                if (ltp >= pos.trailingStop) {
-                    _exit(pos, ltp, 'TRAIL_SL', broker, eventBus);
+                // Check SL against candle high (worst intracandle price for SHORT)
+                const worstPrice = candleHigh != null ? candleHigh : ltp;
+                if (worstPrice >= pos.trailingStop) {
+                    _exit(pos, pos.trailingStop, 'TRAIL_SL', broker, eventBus);
                     continue;
                 }
             }
@@ -71,7 +80,7 @@ function createRiskEngine({ adrMultiplier = 0.3, exitTime = '14:30' } = {}) {
     }
 
     function _exit(pos, ltp, reason, broker, eventBus) {
-        broker.sell(pos.symbol, ltp);
+        broker.sell(pos.symbol, ltp, reason); // reason recorded by backtestBroker; ignored by paperBroker
 
         eventBus.emit('exit', {
             strategyId: pos.strategyId,

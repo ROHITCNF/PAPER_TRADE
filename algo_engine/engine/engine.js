@@ -18,7 +18,15 @@ function wireEngine(eventBus, state, indicators, strategies, riskEngine) {
             state.dayStats = t.dayStats;
         }
 
-        state.vwap = indicators.vwap.updateFromTick(t.price, t.qty);
+        // Backtest passes t.candle (full OHLCV) — use it for more accurate VWAP
+        // and expose it on state so the strategy can read candle.high/low
+        if (t.candle) {
+            state.candle = t.candle;
+            state.vwap = indicators.vwap.updateFromCandle(t.candle);
+        } else {
+            state.candle = null;
+            state.vwap = indicators.vwap.updateFromTick(t.price, t.qty);
+        }
 
         const signals = {
             vwap: state.vwap,
@@ -31,13 +39,17 @@ function wireEngine(eventBus, state, indicators, strategies, riskEngine) {
             strategy.onTick(state, signals);
         }
 
-        // Risk engine evaluates exits for all open positions on this symbol
+        // Risk engine evaluates exits for all open positions on this symbol.
+        // candleHigh/candleLow let the risk engine check intracandle SL hits
+        // in backtest; undefined in live (ignored).
         riskEngine.onTick({
             symbol: state.symbol,
             ltp: t.price,
             time: t.time,
-            broker: strategies[0].broker, // broker is shared per symbol
-            eventBus
+            broker: strategies[0].broker,
+            eventBus,
+            candleHigh: t.candle?.high,
+            candleLow:  t.candle?.low
         });
     });
 
